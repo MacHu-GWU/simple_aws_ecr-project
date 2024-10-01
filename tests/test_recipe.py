@@ -92,6 +92,6 @@ class Test(BaseMockAwsTest):
 
 
 if __name__ == "__main__":
-    from aws_ecr.tests import run_cov_test
+    from simple_aws_ecr.tests import run_cov_test
 
     run_cov_test(__file__, "simple_aws_ecr.recipe", preview=False)
