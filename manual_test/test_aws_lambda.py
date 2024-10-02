@@ -227,7 +227,11 @@ def clean_up():
 
 
 if __name__ == "__main__":
-    """ """
+    """
+    This works!
+
+    slim build --target 862612136886.dkr.ecr.us-east-1.amazonaws.com/aws_ecr_test_lbd_image:0.1.1 --tag 862612136886.dkr.ecr.us-east-1.amazonaws.com/aws_ecr_test_lbd_image:0.1.1 --http-probe=false
+    """
     # create_repo()
     # setup_replication()
     # build_and_push_image()
@@ -236,4 +240,4 @@ if __name__ == "__main__":
     # test_lbd_func_1()
     # deploy_lambda_from_sbx()
     # test_lbd_func_2()
-    clean_up()
+    # clean_up()

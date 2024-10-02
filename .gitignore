@@ -1,7 +1,7 @@
 # User Settings
 simple_aws_ecr.egg-info/
 tmp/
-
+slim.report.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
