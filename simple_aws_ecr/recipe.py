@@ -198,6 +198,7 @@ def configure_cross_account_lambda_get(
         if arn not in arn_list:
             arn_list.append(arn)
             is_policy_changed = True
+    acc_stmt["Principal"]["AWS"] = arn_list
     if aws_account_id_list:
         policy.statements[SID_ALLOW_CROSS_ACCOUNT_GET] = acc_stmt
 
@@ -216,6 +217,7 @@ def configure_cross_account_lambda_get(
         if arn not in arn_list:
             arn_list.append(arn)
             is_policy_changed = True
+    lbd_stmt["Condition"]["StringLike"]["aws:sourceARN"] = arn_list
     if aws_account_id_list:
         policy.statements[SID_ALLOW_CROSS_ACCOUNT_LBD_GET] = lbd_stmt
 
