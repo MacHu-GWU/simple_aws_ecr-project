@@ -146,7 +146,7 @@ def configure_cross_account_lambda_get(
     aws_account_id_list: T.List[str],
     aws_region: str = "*",
     lbd_func_name_prefix: str = "",
-):
+) -> bool:
     """
     Configure cross-account access for Lambda functions to an ECR repository.
 
@@ -159,6 +159,8 @@ def configure_cross_account_lambda_get(
     :param aws_region: AWS region for Lambda functions. Defaults to "*" (all regions).
     :param lbd_func_name_prefix: Prefix for allowed Lambda function names.
         Defaults to "" (all Lambda functions).
+
+    :return: True if the policy was changed, False otherwise.
     """
     # get existing
     try:
@@ -189,6 +191,8 @@ def configure_cross_account_lambda_get(
         ),
     )
     arn_list: T.List[str] = acc_stmt["Principal"]["AWS"]
+    if isinstance(arn_list, str):
+        arn_list = [arn_list]
     for aws_account_id in aws_account_id_list:
         arn = f"arn:aws:iam::{aws_account_id}:root"
         if arn not in arn_list:
@@ -205,6 +209,8 @@ def configure_cross_account_lambda_get(
         ),
     )
     arn_list: T.List[str] = lbd_stmt["Condition"]["StringLike"]["aws:sourceARN"]
+    if isinstance(arn_list, str):
+        arn_list = [arn_list]
     for aws_account_id in aws_account_id_list:
         arn = f"arn:aws:lambda:{aws_region}:{aws_account_id}:function:{lbd_func_name_prefix}*"
         if arn not in arn_list:
@@ -219,6 +225,8 @@ def configure_cross_account_lambda_get(
             repositoryName=repo_name,
             policyText=json.dumps(policy.to_policy_document(), indent=4),
         )
+
+    return is_policy_changed
 
 
 # ------------------------------------------------------------------------------
