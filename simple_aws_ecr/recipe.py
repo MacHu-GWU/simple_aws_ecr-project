@@ -154,9 +154,9 @@ def configure_cross_account_lambda_get(
     This function updates the repository policy to allow specified AWS accounts
     and their Lambda functions to pull images from the repository.
 
-    :param ecr_client: The boto3 ECR client.
+    :param ecr_client: The boto3 ECR client of the ECR repository owner.
     :param repo_name: Name of the ECR repository.
-    :param aws_account_id_liststr: List of AWS account IDs to grant access.
+    :param aws_account_id_list: List of AWS account IDs to grant access.
     :param aws_region: AWS region for Lambda functions. Defaults to "*" (all regions).
     :param lbd_func_name_prefix: Prefix for allowed Lambda function names.
         Defaults to "" (all Lambda functions).
@@ -252,7 +252,7 @@ def configure_replication_for_source_registry(
         operation that adds new rules and updates existing ones without removing any
         rules not present in the input.
 
-    :param ecr_client: The boto3 ECR client.
+    :param ecr_client: The boto3 ECR client of the source registry.
     :param rules: A list of :class:`aws_ecr.model.ReplicationRule` objects to be applied.
 
     Reference:
@@ -372,7 +372,7 @@ class DestinationInfo:
     """
     The destination information for the replication rule.
 
-    :param target_boto_ses: The boto3 session for the target AWS account.
+    :param target_boto_ses: The boto3 session for the replication target AWS account.
     :param target_aws_account_id: The target AWS account ID.
     :param target_aws_region: The target AWS region.
     """

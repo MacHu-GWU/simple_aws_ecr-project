@@ -45,6 +45,9 @@ class Base:
 
 
 class ImageTagMutability(str, enum.Enum):
+    """
+    The tag mutability setting for an ECR repository.
+    """
     MUTABLE = "MUTABLE"
     IMMUTABLE = "IMMUTABLE"
 

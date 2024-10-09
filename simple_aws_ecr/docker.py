@@ -176,7 +176,7 @@ class EcrContext:
         Build docker image.
 
         :param image_tag_list: the list of tag you want to give to the built image,
-        e.g. ["latest", "0.1.1"]
+            e.g. ["latest", "0.1.1"]
         :param additional_args: additional command line arguments for ``docker build ...``
 
         .. note::
