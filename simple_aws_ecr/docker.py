@@ -5,12 +5,14 @@ Make docker cli easier to work with AWS ECR.
 """
 
 import typing as T
+import json
 import base64
 import subprocess
 import dataclasses
 from pathlib import Path
 
 from .vendor.better_pathlib import temp_cwd
+from .model import Repository
 
 if T.TYPE_CHECKING:  # pragma: no cover
     from boto_session_manager import BotoSesManager
@@ -250,3 +252,113 @@ class EcrContext:
             ]
             args.extend(additional_args)
             subprocess.run(args, check=True)
+
+
+@dataclasses.dataclass
+class EcrRepoRelease:  # pragma: no cover
+    """
+    This class manages the workflow of Docker image promotion from development
+    to production in an AWS ECR environment.
+
+    The primary workflow involves:
+
+    1. Continuous deployment of new image versions to a development ECR repository.
+    2. Selection and promotion of mature versions to a production ECR repository.
+
+    Other that, we will replicate production images across multiple AWS accounts
+    and regions. This capability is provided by the
+    :mod:`esc_docker_image_porter.replicate` module.
+
+    This class defines relation between the develop repository and the release repository.
+    They have to be in the same AWS account and same AWS region.
+    """
+
+    develop_repo_name: str = dataclasses.field()
+    release_repo_name: str = dataclasses.field()
+
+    def create_release_repo(
+        self,
+        ecr_client: "ECRClient",
+        untagged_image_expire_time: int = 30,
+        tags: T.Dict[str, str] = None,
+    ):
+        """
+        Create a release repository and set the lifecycle policy.
+
+        :param ecr_client: The boto3 ECR client.
+        :param untagged_image_expire_time: The time (in days) to expire the untagged image.
+        :param tags: The tags for the repository.
+        """
+        repo = Repository.get(
+            ecr_client=ecr_client,
+            repository_name=self.release_repo_name,
+        )
+        if tags is None:
+            tags = dict()
+        if repo is None:
+            ecr_client.create_repository(
+                repositoryName=self.release_repo_name,
+                imageTagMutability="MUTABLE",
+                tags=[dict(Key=k, Value=v) for k, v in tags.items()],
+            )
+            life_cycle_policy = {
+                "rules": [
+                    {
+                        "rulePriority": 1,
+                        "description": "string",
+                        "selection": {
+                            "tagStatus": "untagged",
+                            "countType": "sinceImagePushed",
+                            "countUnit": "days",
+                            "countNumber": untagged_image_expire_time,
+                        },
+                        "action": {"type": "expire"},
+                    }
+                ]
+            }
+            ecr_client.put_lifecycle_policy(
+                repositoryName=self.release_repo_name,
+                lifecyclePolicyText=json.dumps(life_cycle_policy),
+            )
+
+    def release_image(
+        self,
+        ecr_client: "ECRClient",
+        aws_account_id: str,
+        aws_region: str,
+        tag: str,
+    ):
+        """
+        Release an image from the develop repository to the release repository.
+
+        :param ecr_client: The boto3 ECR client.
+        :param aws_account_id: The AWS account id of the release ECR repo.
+        :param aws_region: The AWS region of the release ECR repo.
+        :param tag: The image tag.
+        """
+        ecr_login(
+            ecr_client=ecr_client,
+            aws_account_id=aws_account_id,
+            aws_region=aws_region,
+        )
+        uri_source = get_ecr_image_uri(
+            aws_account_id=aws_account_id,
+            aws_region=aws_region,
+            ecr_repo_name=self.develop_repo_name,
+            tag=tag,
+        )
+        uri_target = get_ecr_image_uri(
+            aws_account_id=aws_account_id,
+            aws_region=aws_region,
+            ecr_repo_name=self.release_repo_name,
+            tag=tag,
+        )
+
+        args = ["docker", "pull", uri_source]
+        subprocess.run(args, check=True)
+
+        args = ["docker", "tag", uri_source, uri_target]
+        subprocess.run(args, check=True)
+
+        args = ["docker", "push", uri_target]
+        subprocess.run(args, check=True)

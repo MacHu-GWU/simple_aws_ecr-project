@@ -15,6 +15,21 @@ x.y.z (Backlog)
 **Miscellaneous**
 
 
+0.1.6 (2024-10-09)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Features and Improvements**
+
+- Add the following public APIs:
+    - ``simple_aws_ecr.ImageTagMutability``
+    - ``simple_aws_ecr.EcrRepoRelease``
+    - ``simple_aws_ecr.Policy``
+    - ``simple_aws_ecr.build_cross_account_get_statement``
+    - ``simple_aws_ecr.build_cross_account_lbd_get_statement``
+    - ``simple_aws_ecr.switch_boto_ses_region``
+    - ``simple_aws_ecr.DestinationInfo``
+    - ``simple_aws_ecr.configure_cross_account_replication``
+
+
 0.1.5 (2024-10-02)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 **Bugfixes**

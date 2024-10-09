@@ -15,8 +15,9 @@ import dataclasses
 from datetime import timezone
 
 import botocore.exceptions
+from boto3 import Session
 
-from .model import Image, ReplicationRule
+from .model import Image, ReplicationRule, Destination, RepositoryFilter
 from .utils import get_utc_now
 
 if T.TYPE_CHECKING:  # pragma: no cover
@@ -340,11 +341,104 @@ def configure_replication_for_destination_registry(
     )
 
 
+def switch_boto_ses_region(
+    boto_ses: "Session",
+    aws_region: str,
+) -> "Session":
+    """
+    Switch the boto3 session to another region, using the same credentials.
+
+    :param boto_ses: The boto3 session.
+    :param aws_region: The target region.
+
+    :return: The new boto3 session.
+    """
+    cred = boto_ses.get_credentials()
+    kwargs = dict(
+        region_name=aws_region,
+        aws_access_key_id=cred.access_key,
+        aws_secret_access_key=cred.secret_key,
+    )
+    try:  # pragma: no cover
+        if cred.token is not None:
+            kwargs["aws_session_token"] = cred.token
+    except:  # pragma: no cover
+        pass
+    return Session(**kwargs)
+
+
+@dataclasses.dataclass
+class DestinationInfo:
+    """
+    The destination information for the replication rule.
+
+    :param target_boto_ses: The boto3 session for the target AWS account.
+    :param target_aws_account_id: The target AWS account ID.
+    :param target_aws_region: The target AWS region.
+    """
+
+    target_boto_ses: "Session" = dataclasses.field()
+    target_aws_account_id: str = dataclasses.field()
+    target_aws_region: str = dataclasses.field()
+
+
+def configure_cross_account_replication(
+    repo_prefix_filter: str,
+    source_aws_account_id: str,
+    source_boto_ses: "Session",
+    dest_info_list: T.List[DestinationInfo],
+):
+    """
+    Configure both source account and many target account ECR registry policy
+    for cross-account replication.
+
+    :param repo_prefix_filter: The repository prefix filter.
+    :param source_aws_account_id: The source AWS account ID.
+    :param source_boto_ses: The boto3 session for the source AWS account.
+    :param dest_info_list: The list of destination information. Each item is a
+        :class:`DestinationInfo` object.
+    """
+    # configure replication rules in the source account ECR registry
+    rule = ReplicationRule(
+        destinations=[
+            Destination(
+                region=dest_info.target_aws_region,
+                registryId=dest_info.target_aws_account_id,
+            )
+            for dest_info in dest_info_list
+        ],
+        repositoryFilters=[
+            RepositoryFilter(
+                filter=repo_prefix_filter,
+            ),
+        ],
+    )
+    # this API is idempotent, so it's safe to call multiple times
+    configure_replication_for_source_registry(
+        ecr_client=source_boto_ses.client("ecr"),
+        rules=[rule],
+    )
+
+    # configure target account ECR registry to accept the replication
+    for dest_info in dest_info_list:
+        new_boto_ses = switch_boto_ses_region(
+            boto_ses=dest_info.target_boto_ses,
+            aws_region=dest_info.target_aws_region,
+        )
+        # this API is idempotent, so it's safe to call multiple times
+        configure_replication_for_destination_registry(
+            ecr_client=new_boto_ses.client("ecr"),
+            source_account_id_list=[source_aws_account_id],
+            target_account_id=dest_info.target_aws_account_id,
+            target_region=dest_info.target_aws_region,
+        )
+
+
 def delete_untagged_image(
     ecr_client: "ECRClient",
     repo_name: str,
     expire: int = 90 * 24 * 60 * 60,
-) -> T.List[Image]: # pragma: no cover
+) -> T.List[Image]:  # pragma: no cover
     """
     Delete untagged images from an ECR repository.
 
